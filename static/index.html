@@ -1,0 +1,31 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>URL Guard</title>
+</head>
+<body>
+  <h1>URL Guard</h1>
+  <form id="form">
+    <input id="url" type="text" placeholder="paypa1-login.xyz/verify" size="50" aria-label="URL to check">
+    <button type="submit">Check</button>
+  </form>
+  <p id="out" aria-live="polite"></p>
+<script>
+  document.getElementById('form').addEventListener('submit', async function (e) {
+    e.preventDefault();
+    var out = document.getElementById('out');
+    var r = await fetch('/predict', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ url: document.getElementById('url').value })
+    });
+    var d = await r.json();
+    out.textContent = r.ok
+      ? d.verdict + ' (' + Math.round(d.probability * 100) + '% malicious)'
+      : (d.error || 'Could not check that URL.');
+  });
+</script>
+</body>
+</html>

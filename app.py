@@ -10,7 +10,7 @@ from pathlib import Path
 import joblib
 import numpy as np
 from fastapi import FastAPI
-from fastapi.responses import JSONResponse, Response
+from fastapi.responses import FileResponse, JSONResponse, Response
 from pydantic import BaseModel, Field
 
 from urlguard.features import SUSPICIOUS, lexical
@@ -80,3 +80,8 @@ def health():
 @app.get("/favicon.ico", include_in_schema=False)
 def favicon():
     return Response(status_code=204)
+
+
+@app.get("/")
+def index():
+    return FileResponse(BASE / "static" / "index.html")
