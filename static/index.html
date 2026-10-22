@@ -4,28 +4,247 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>URL Guard</title>
+<style>
+  :root {
+    --bg: #0b0f14;
+    --panel: #121820;
+    --line: #1f2a37;
+    --text: #d7e0ea;
+    --muted: #7d8b9a;
+    --accent: #4ade80;
+    --bad: #f87171;
+    --warn: #fbbf24;
+    --mono: ui-monospace, SFMono-Regular, Menlo, Consolas, "Liberation Mono", monospace;
+  }
+  * { box-sizing: border-box; }
+  html, body { margin: 0; }
+  body {
+    background: var(--bg);
+    color: var(--text);
+    font-family: var(--mono);
+    line-height: 1.5;
+    min-height: 100vh;
+  }
+  main { max-width: 760px; margin: 0 auto; padding: 40px 16px 64px; }
+  h1 { font-size: 1.5rem; margin: 0 0 4px; letter-spacing: .02em; }
+  h1 span { color: var(--accent); }
+  .sub { color: var(--muted); margin: 0 0 28px; font-size: .9rem; }
+
+  form { display: flex; gap: 8px; }
+  input[type=text] {
+    flex: 1; min-width: 0;
+    background: var(--panel); color: var(--text);
+    border: 1px solid var(--line); border-radius: 8px;
+    padding: 14px 14px; font: inherit; font-size: 1rem;
+  }
+  input[type=text]:focus { outline: 2px solid var(--accent); outline-offset: 0; border-color: transparent; }
+  button {
+    font: inherit; cursor: pointer; border-radius: 8px; border: 1px solid transparent;
+    background: var(--accent); color: #05210f; font-weight: 700; padding: 0 20px;
+  }
+  button:disabled { opacity: .55; cursor: progress; }
+  button:focus-visible, .chip:focus-visible { outline: 2px solid var(--text); outline-offset: 2px; }
+
+  .chips { display: flex; flex-wrap: wrap; gap: 8px; margin: 12px 0 0; align-items: center; }
+  .chips small { color: var(--muted); }
+  .chip {
+    background: transparent; color: var(--muted); border: 1px solid var(--line);
+    padding: 4px 10px; font-weight: 400; font-size: .8rem;
+  }
+  .chip:hover { color: var(--text); border-color: var(--muted); }
+
+  #result { margin-top: 28px; }
+  .card { background: var(--panel); border: 1px solid var(--line); border-radius: 12px; padding: 20px; }
+  .card.bad { border-color: color-mix(in srgb, var(--bad) 55%, transparent); }
+  .card.good { border-color: color-mix(in srgb, var(--accent) 45%, transparent); }
+  .verdict { font-size: 1.35rem; font-weight: 700; margin: 0 0 2px; }
+  .bad .verdict { color: var(--bad); }
+  .good .verdict { color: var(--accent); }
+  .url { color: var(--muted); font-size: .85rem; word-break: break-all; margin: 0 0 16px; }
+
+  .meter { position: relative; height: 10px; background: var(--line); border-radius: 99px; overflow: visible; }
+  .meter > i { display: block; height: 100%; border-radius: 99px; background: var(--accent); transition: width .5s ease; }
+  .bad .meter > i { background: var(--bad); }
+  .meter > b { position: absolute; top: -4px; width: 2px; height: 18px; background: var(--text); opacity: .7; }
+  .meter-labels { display: flex; justify-content: space-between; font-size: .75rem; color: var(--muted); margin-top: 8px; }
+  .prob { font-size: 1.05rem; margin: 0 0 10px; }
+
+  dl { display: grid; grid-template-columns: max-content 1fr; gap: 6px 16px; margin: 18px 0 0; font-size: .85rem; }
+  dt { color: var(--muted); }
+  dd { margin: 0; word-break: break-all; }
+  .tag { display: inline-block; border: 1px solid var(--line); border-radius: 6px; padding: 0 6px; margin: 0 4px 2px 0; }
+  .tag.warn { color: var(--warn); border-color: color-mix(in srgb, var(--warn) 40%, transparent); }
+
+  .note { color: var(--muted); font-size: .78rem; margin-top: 16px; }
+  .err { color: var(--bad); }
+
+  h2 { font-size: .95rem; margin: 40px 0 10px; color: var(--muted); font-weight: 600; text-transform: uppercase; letter-spacing: .08em; }
+  #history { list-style: none; margin: 0; padding: 0; border: 1px solid var(--line); border-radius: 12px; overflow: hidden; }
+  #history li { display: flex; gap: 12px; align-items: baseline; padding: 10px 14px; border-top: 1px solid var(--line); font-size: .85rem; }
+  #history li:first-child { border-top: 0; }
+  #history .u { flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; cursor: pointer; }
+  #history .u:hover { text-decoration: underline; }
+  #history .v.bad { color: var(--bad); } #history .v.good { color: var(--accent); }
+  .empty { color: var(--muted); font-size: .85rem; padding: 14px; }
+  .clear { background: none; border: 0; color: var(--muted); padding: 0; font-weight: 400; font-size: .8rem; text-decoration: underline; }
+
+  @media (max-width: 520px) {
+    form { flex-direction: column; }
+    button[type=submit] { padding: 13px; }
+    dl { grid-template-columns: 1fr; gap: 0; }
+    dd { margin-bottom: 8px; }
+  }
+</style>
 </head>
 <body>
-  <h1>URL Guard</h1>
-  <form id="form">
-    <input id="url" type="text" placeholder="paypa1-login.xyz/verify" size="50" aria-label="URL to check">
-    <button type="submit">Check</button>
+<main>
+  <h1>URL <span>Guard</span></h1>
+  <p class="sub">Paste a link to estimate whether it looks malicious. Nothing is opened or fetched.</p>
+
+  <form id="form" autocomplete="off">
+    <input id="url" type="text" inputmode="url" placeholder="e.g. paypa1-login.xyz/verify" aria-label="URL to check" spellcheck="false" autofocus>
+    <button id="go" type="submit">Check</button>
   </form>
-  <p id="out" aria-live="polite"></p>
+
+  <div class="chips" aria-label="Examples">
+    <small>try:</small>
+    <button type="button" class="chip" data-url="paypa1-login.xyz/verify">paypa1-login.xyz/verify</button>
+    <button type="button" class="chip" data-url="github.com/c-tasnia">github.com/c-tasnia</button>
+    <button type="button" class="chip" data-url="gooogle.com/accounts/login">gooogle.com/accounts/login</button>
+    <button type="button" class="chip" data-url="http://192.168.4.5/update.php">192.168.4.5/update.php</button>
+  </div>
+
+  <section id="result" aria-live="polite"></section>
+
+  <h2>Recent checks <button class="clear" id="clear" type="button">clear</button></h2>
+  <ul id="history"></ul>
+</main>
+
 <script>
-  document.getElementById('form').addEventListener('submit', async function (e) {
-    e.preventDefault();
-    var out = document.getElementById('out');
-    var r = await fetch('/predict', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ url: document.getElementById('url').value })
+(function () {
+  var form = document.getElementById('form');
+  var input = document.getElementById('url');
+  var go = document.getElementById('go');
+  var result = document.getElementById('result');
+  var historyEl = document.getElementById('history');
+  var KEY = 'urlguard.history';
+  var history = [];
+
+  try { history = JSON.parse(localStorage.getItem(KEY) || '[]'); } catch (e) { history = []; }
+  if (!Array.isArray(history)) history = [];
+
+  function save() { try { localStorage.setItem(KEY, JSON.stringify(history.slice(0, 10))); } catch (e) {} }
+  function el(tag, cls, text) {
+    var n = document.createElement(tag);
+    if (cls) n.className = cls;
+    if (text !== undefined) n.textContent = text;
+    return n;
+  }
+
+  function renderHistory() {
+    historyEl.replaceChildren();
+    if (!history.length) {
+      var li = el('li', 'empty', 'No checks yet.');
+      historyEl.appendChild(li);
+      return;
+    }
+    history.slice(0, 10).forEach(function (h) {
+      var li = document.createElement('li');
+      var u = el('span', 'u', h.url);
+      u.title = 'Check again';
+      u.addEventListener('click', function () { input.value = h.url; check(h.url); });
+      var v = el('span', 'v ' + (h.verdict === 'malicious' ? 'bad' : 'good'),
+                 h.verdict + ' ' + Math.round(h.p * 100) + '%');
+      li.appendChild(u); li.appendChild(v);
+      historyEl.appendChild(li);
     });
-    var d = await r.json();
-    out.textContent = r.ok
-      ? d.verdict + ' (' + Math.round(d.probability * 100) + '% malicious)'
-      : (d.error || 'Could not check that URL.');
+  }
+
+  function row(dl, k, valueNode) {
+    dl.appendChild(el('dt', null, k));
+    var dd = document.createElement('dd');
+    dd.appendChild(valueNode);
+    dl.appendChild(dd);
+  }
+
+  function render(d) {
+    var bad = d.verdict === 'malicious';
+    var pct = Math.round(d.probability * 100);
+    var card = el('div', 'card ' + (bad ? 'bad' : 'good'));
+    card.appendChild(el('p', 'verdict', bad ? 'Likely malicious' : 'Looks benign'));
+    card.appendChild(el('p', 'url', d.input));
+    card.appendChild(el('p', 'prob', 'Malicious probability: ' + pct + '%'));
+
+    var meter = el('div', 'meter');
+    var fill = document.createElement('i'); fill.style.width = '0%';
+    var mark = document.createElement('b'); mark.style.left = (d.threshold * 100) + '%';
+    meter.appendChild(fill); meter.appendChild(mark);
+    card.appendChild(meter);
+    requestAnimationFrame(function () { fill.style.width = pct + '%'; });
+
+    var labels = el('div', 'meter-labels');
+    labels.appendChild(el('span', null, '0%'));
+    labels.appendChild(el('span', null, 'decision line ' + Math.round(d.threshold * 100) + '%'));
+    labels.appendChild(el('span', null, '100%'));
+    card.appendChild(labels);
+
+    var s = d.signals, dl = el('dl');
+    row(dl, 'Host', el('span', null, s.host || '(none)'));
+    row(dl, 'Popular domain', el('span', null, s.in_popular_list ? 'yes, in the top 100k list' : 'no / not in list'));
+    row(dl, 'IP as host', el('span', null, s.ip_address_host ? 'yes' : 'no'));
+    row(dl, 'Hyphens in host', el('span', null, String(s.hyphens_in_host)));
+    var words = el('span');
+    if (s.suspicious_words.length) {
+      s.suspicious_words.forEach(function (w) { words.appendChild(el('span', 'tag warn', w)); });
+    } else { words.textContent = 'none'; }
+    row(dl, 'Risky words', words);
+    row(dl, 'Length', el('span', null, s.length + ' chars'));
+    card.appendChild(dl);
+
+    card.appendChild(el('p', 'note', 'This is a statistical estimate from the URL text alone, not a security guarantee. Do not rely on it as your only check.'));
+    result.replaceChildren(card);
+  }
+
+  function showError(msg) {
+    var card = el('div', 'card');
+    card.appendChild(el('p', 'err', msg));
+    result.replaceChildren(card);
+  }
+
+  async function check(url) {
+    url = (url || '').trim();
+    if (!url) { showError('Enter a URL to check.'); return; }
+    go.disabled = true; go.textContent = 'Checking…';
+    try {
+      var r = await fetch('/predict', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ url: url })
+      });
+      var d = await r.json();
+      if (!r.ok) {
+        showError(d.error || (d.detail && d.detail[0] && d.detail[0].msg) || 'Could not check that URL.');
+        return;
+      }
+      render(d);
+      history = history.filter(function (h) { return h.url !== d.input; });
+      history.unshift({ url: d.input, verdict: d.verdict, p: d.probability });
+      history = history.slice(0, 10);
+      save(); renderHistory();
+    } catch (e) {
+      showError('Could not reach the server. Is the API running?');
+    } finally {
+      go.disabled = false; go.textContent = 'Check';
+    }
+  }
+
+  form.addEventListener('submit', function (e) { e.preventDefault(); check(input.value); });
+  document.querySelectorAll('.chip').forEach(function (c) {
+    c.addEventListener('click', function () { input.value = c.dataset.url; check(c.dataset.url); });
   });
+  document.getElementById('clear').addEventListener('click', function () { history = []; save(); renderHistory(); });
+  renderHistory();
+})();
 </script>
 </body>
 </html>
