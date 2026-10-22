@@ -1,0 +1,14 @@
+.git
+.github
+.venv
+__pycache__
+*.pyc
+.pytest_cache
+tests
+docs
+*.csv
+model/metrics.json
+requirements-dev.txt
+requirements-train.txt
+train.py
+README.md
