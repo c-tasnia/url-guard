@@ -96,7 +96,40 @@ docs/evaluation.md  how to evaluate, and what went wrong before
 
 ## Deploy
 
-Any host that runs a Python web process works. Build with `pip install -r requirements.txt` and start with `uvicorn app:app --host 0.0.0.0 --port $PORT` (Render, Railway) or port 7860 on Hugging Face Spaces (Docker).
+The site needs a Python server to run the model, so GitHub Pages cannot host it. Any host that runs Python or Docker works. Free tiers usually put the app to sleep when idle, so the first request after a quiet period can take a minute.
+
+### Docker (Hugging Face Spaces or any container host)
+
+```
+docker build -t url-guard .
+docker run -p 7860:7860 url-guard
+```
+
+Open http://localhost:7860.
+
+On Hugging Face Spaces, create a Space with the Docker SDK and push this repository to it. The Space's `README.md` must start with this block (put it in the Space only; GitHub would render it as a table):
+
+```
+---
+title: URL Guard
+sdk: docker
+app_port: 7860
+---
+```
+
+### Render or Railway
+
+Connect the GitHub repository and set:
+
+- Build command: `pip install -r requirements.txt`
+- Start command: `uvicorn app:app --host 0.0.0.0 --port $PORT`
+- Python version: 3.12 (on Render, set the `PYTHON_VERSION` environment variable)
+
+The loaded model, scikit-learn and LightGBM need a few hundred MB of RAM. If a free tier of 512 MB runs out of memory, use the Docker route on Hugging Face Spaces instead.
+
+### Live demo
+
+Once deployed, put the link here so visitors can use the site without installing anything.
 
 ## Limitations
 
